@@ -3,15 +3,18 @@ import { app } from '../../app'
 import { InputCreateBenefitDto } from '../../modules/benefits/usecases/create-benefit/create-benefit.dto'
 import { Uuid } from '../../@shared/ValueObjects/uuid.vo'
 import { randomUUID } from 'crypto'
-import { get } from 'lodash'
-import { ItemCategory, ItemType } from '@prisma/client'
+import { ItemCategory, ItemType, SalesType } from '@prisma/client'
 
 let correctAdminToken: string
+let correctSellerToken: string
+
 let partner_info_uuid: string
-let business_address_uuid: string
+let partner2_info_uuid: string
 
+let partner_address_uuid: string
+let partner2_address_uuid: string
 let employer_info_uuid: string
-
+let employer_address_uuid: string
 let partner_admin_token: string
 let partner_admin_uuid: string
 
@@ -54,6 +57,27 @@ describe("E2E Business tests", () => {
     const result = await request(app).post('/login').send(authenticateAdmin)
     expect(result.statusCode).toBe(200)
     correctAdminToken = result.body.token
+
+    const inputCorrectSeller = {
+      name: "Seller Correct",
+      email: "sellercorrect@correct.com.br",
+      userName: "seller-correct",
+      password: "123"
+    }
+    const createCorrectSeller = await request(app).post('/seller').set('Authorization', `Bearer ${correctAdminToken}`).send(inputCorrectSeller)
+    expect(createCorrectSeller.statusCode).toBe(201)
+    expect(createCorrectSeller.body.isAdmin).toBeFalsy()
+
+
+    const authSellerInput = {
+      userName: 'seller-correct',
+      password: '123'
+    }
+    //authenticate seller
+    const authSeller = await request(app).post('/login').send(authSellerInput)
+    expect(authSeller.statusCode).toBe(200)
+    correctSellerToken = authSeller.body.token
+
 
     //create items
     const benefit1: InputCreateBenefitDto = {
@@ -568,8 +592,7 @@ describe("E2E Business tests", () => {
           expect(result.body.error).toBe("Business branch is required")
 
         })
-
-        it("Should register a new partner business", async () => {
+        it("Should throw an error if main branch is not one of the branches list", async () => {
           const input = {
             line1: "Rua",
             line2: "72B",
@@ -587,36 +610,20 @@ describe("E2E Business tests", () => {
             phone_1: "215745158",
             phone_2: "124588965",
             business_type: "comercio",
-            branches_uuid: [branch1_uuid, branch3_uuid, branch4_uuid]
+            branches_uuid: [branch1_uuid, branch3_uuid, branch4_uuid],
+            partnerConfig: {
+              main_branch: branch2_uuid,
+              partner_category: ['saude'],
+              use_marketing: false,
+              use_market_place: false
+            }
           }
 
           const result = await request(app).post("/business/register").send(input)
-          partner_info_uuid = result.body.business_info_uuid
-          business_address_uuid = result.body.address_uuid
-
-          expect(result.statusCode).toBe(201)
-          expect(result.body.line1).toBe(input.line1)
-          expect(result.body.line2).toBe(input.line2)
-          expect(result.body.line3).toBe(input.line3)
-          expect(result.body.neighborhood).toBe(input.neighborhood)
-          expect(result.body.postal_code).toBe(input.postal_code)
-          expect(result.body.city).toBe(input.city)
-          expect(result.body.state).toBe(input.state)
-          expect(result.body.country).toBe(input.country)
-          expect(result.body.business_info_uuid).toBeTruthy()
-          expect(result.body.fantasy_name).toBe(input.fantasy_name)
-          expect(result.body.document).toBe(input.document)
-          expect(result.body.classification).toBe(input.classification)
-          expect(result.body.colaborators_number).toBe(input.colaborators_number)
-          expect(result.body.status).toBe("pending_approval")
-          expect(result.body.email).toBe(input.email)
-          expect(result.body.phone_1).toBe(input.phone_1)
-          expect(result.body.phone_2).toBe(input.phone_2)
-          expect(result.body.business_type).toBe(input.business_type)
-          expect(result.body.address_uuid).toEqual(result.body.address_fk_uuid)
+          expect(result.statusCode).toBe(400)
+          expect(result.body.error).toBe("Invalid main branch")
         })
-
-        it("Should throw an error if business document is already registered", async () => {
+        it("Should register an partner with only admin tax", async () => {
           const input = {
             line1: "Rua",
             line2: "72B",
@@ -630,24 +637,67 @@ describe("E2E Business tests", () => {
             document: "comercio",
             classification: "Classificação",
             colaborators_number: 5,
-            email: "email@email.com",
+            email: "comercio@comercio.com",
             phone_1: "215745158",
             phone_2: "124588965",
             business_type: "comercio",
-            branches_uuid: [branch2_uuid, branch2_uuid, branch4_uuid]
-
+            branches_uuid: [branch1_uuid, branch3_uuid, branch4_uuid],
+            partnerConfig: {
+              main_branch: branch1_uuid,
+              partner_category: ['saude'],
+              use_marketing: false,
+              use_market_place: false
+            }
           }
 
-
-          await request(app).post("/business/register").send(input)
           const result = await request(app).post("/business/register").send(input)
-
-          expect(result.statusCode).toBe(409)
-          expect(result.body.error).toBe("Business already registered")
-
+          expect(result.statusCode).toBe(201)
+          partner_info_uuid = result.body.BusinessInfo.uuid
+          partner_address_uuid = result.body.Address.uuid
+          //Address
+          expect(result.body.Address.uuid).toBeTruthy()
+          expect(result.body.Address.line1).toEqual(input.line1)
+          expect(result.body.Address.line2).toEqual(input.line2)
+          expect(result.body.Address.line3).toEqual(input.line3)
+          expect(result.body.Address.neighborhood).toEqual(input.neighborhood)
+          expect(result.body.Address.postal_code).toEqual(input.postal_code)
+          expect(result.body.Address.city).toEqual(input.city)
+          expect(result.body.Address.state).toEqual(input.state)
+          expect(result.body.Address.country).toEqual(input.country)
+          //Business Info
+          expect(result.body.BusinessInfo.uuid).toBeTruthy()
+          expect(result.body.BusinessInfo.address_uuid).toEqual(result.body.Address.uuid)
+          expect(result.body.BusinessInfo.fantasy_name).toEqual(input.fantasy_name)
+          expect(result.body.BusinessInfo.corporate_reason).toBeFalsy()
+          expect(result.body.BusinessInfo.document).toEqual(input.document)
+          expect(result.body.BusinessInfo.classification).toEqual(input.classification)
+          expect(result.body.BusinessInfo.colaborators_number).toEqual(input.colaborators_number)
+          expect(result.body.BusinessInfo.status).toBe('pending_approval')
+          expect(result.body.BusinessInfo.phone_1).toEqual(input.phone_1)
+          expect(result.body.BusinessInfo.phone_2).toEqual(input.phone_2)
+          expect(result.body.BusinessInfo.document).toEqual(input.document)
+          expect(result.body.BusinessInfo.business_type).toEqual(input.business_type)
+          expect(result.body.BusinessInfo.email).toEqual(input.email)
+          expect(result.body.BusinessInfo.created_at).toBeTruthy()
+          //N to N business / correct
+          expect(result.body.CorrectUserBusinessBranch.uuid).toBeTruthy()
+          expect(result.body.CorrectUserBusinessBranch.business_info_uuid).toEqual(result.body.BusinessInfo.uuid)
+          expect(result.body.CorrectUserBusinessBranch.correct_user_uuid).toBeFalsy()
+          expect(result.body.CorrectUserBusinessBranch.created_at).toBeTruthy()
+          //PartnerConfig
+          expect(result.body.PartnerConfig.uuid).toBeTruthy()
+          expect(result.body.PartnerConfig.business_info_uuid).toEqual(result.body.BusinessInfo.uuid)
+          expect(result.body.PartnerConfig.main_branch).toEqual(input.partnerConfig.main_branch)
+          expect(result.body.PartnerConfig.partner_category).toEqual(input.partnerConfig.partner_category)
+          expect(result.body.PartnerConfig.main_branch).toEqual(input.partnerConfig.main_branch)
+          expect(result.body.PartnerConfig.items_uuid.length).not.toBe(0)
+          expect(result.body.PartnerConfig.admin_tax).toEqual(150) //this is according to branch1 definitions
+          expect(result.body.PartnerConfig.marketing_tax).toEqual(0)
+          expect(result.body.PartnerConfig.use_marketing).toBeFalsy()
+          expect(result.body.PartnerConfig.market_place_tax).toEqual(0)
+          expect(result.body.PartnerConfig.use_market_place).toBeFalsy()
         })
-
-        it("Should throw an error if business email is already registered", async () => {
+        it("Should register an partner with admin tax and marketing", async () => {
           const input = {
             line1: "Rua",
             line2: "72B",
@@ -661,19 +711,137 @@ describe("E2E Business tests", () => {
             document: "comercio2",
             classification: "Classificação",
             colaborators_number: 5,
-            email: "comercio@comercio.com",
+            email: "comercio2@comercio.com",
             phone_1: "215745158",
             phone_2: "124588965",
             business_type: "comercio",
-            branches_uuid: [branch2_uuid, branch2_uuid, branch4_uuid]
+            branches_uuid: [branch1_uuid, branch3_uuid, branch4_uuid],
+            partnerConfig: {
+              main_branch: branch3_uuid,
+              partner_category: ['saude'],
+              use_marketing: true,
+              use_market_place: false
+            }
           }
 
-          await request(app).post("/business/register").send(input)
           const result = await request(app).post("/business/register").send(input)
-          expect(result.statusCode).toBe(409)
-          expect(result.body.error).toBe("Business email already registered")
-
+          expect(result.statusCode).toBe(201)
+          //Address
+          expect(result.body.Address.uuid).toBeTruthy()
+          expect(result.body.Address.line1).toEqual(input.line1)
+          expect(result.body.Address.line2).toEqual(input.line2)
+          expect(result.body.Address.line3).toEqual(input.line3)
+          expect(result.body.Address.neighborhood).toEqual(input.neighborhood)
+          expect(result.body.Address.postal_code).toEqual(input.postal_code)
+          expect(result.body.Address.city).toEqual(input.city)
+          expect(result.body.Address.state).toEqual(input.state)
+          expect(result.body.Address.country).toEqual(input.country)
+          //Business Info
+          expect(result.body.BusinessInfo.uuid).toBeTruthy()
+          expect(result.body.BusinessInfo.address_uuid).toEqual(result.body.Address.uuid)
+          expect(result.body.BusinessInfo.fantasy_name).toEqual(input.fantasy_name)
+          expect(result.body.BusinessInfo.corporate_reason).toBeFalsy()
+          expect(result.body.BusinessInfo.document).toEqual(input.document)
+          expect(result.body.BusinessInfo.classification).toEqual(input.classification)
+          expect(result.body.BusinessInfo.colaborators_number).toEqual(input.colaborators_number)
+          expect(result.body.BusinessInfo.status).toBe('pending_approval')
+          expect(result.body.BusinessInfo.phone_1).toEqual(input.phone_1)
+          expect(result.body.BusinessInfo.phone_2).toEqual(input.phone_2)
+          expect(result.body.BusinessInfo.document).toEqual(input.document)
+          expect(result.body.BusinessInfo.business_type).toEqual(input.business_type)
+          expect(result.body.BusinessInfo.email).toEqual(input.email)
+          expect(result.body.BusinessInfo.created_at).toBeTruthy()
+          //N to N business / correct
+          expect(result.body.CorrectUserBusinessBranch.uuid).toBeTruthy()
+          expect(result.body.CorrectUserBusinessBranch.business_info_uuid).toEqual(result.body.BusinessInfo.uuid)
+          expect(result.body.CorrectUserBusinessBranch.correct_user_uuid).toBeFalsy()
+          expect(result.body.CorrectUserBusinessBranch.created_at).toBeTruthy()
+          //PartnerConfig
+          expect(result.body.PartnerConfig.uuid).toBeTruthy()
+          expect(result.body.PartnerConfig.business_info_uuid).toEqual(result.body.BusinessInfo.uuid)
+          expect(result.body.PartnerConfig.main_branch).toEqual(input.partnerConfig.main_branch)
+          expect(result.body.PartnerConfig.partner_category).toEqual(input.partnerConfig.partner_category)
+          expect(result.body.PartnerConfig.main_branch).toEqual(input.partnerConfig.main_branch)
+          expect(result.body.PartnerConfig.items_uuid.length).not.toBe(0)
+          expect(result.body.PartnerConfig.admin_tax).toEqual(140) //this is according to branch1 definitions
+          expect(result.body.PartnerConfig.marketing_tax).toEqual(130)
+          expect(result.body.PartnerConfig.use_marketing).toBeTruthy()
+          expect(result.body.PartnerConfig.market_place_tax).toEqual(0)
+          expect(result.body.PartnerConfig.use_market_place).toBeFalsy()
         })
+        it("Should register an partner with admin tax, marketing tax and market places tax", async () => {
+          const input = {
+            line1: "Rua",
+            line2: "72B",
+            line3: "",
+            neighborhood: "Bairro Teste",
+            postal_code: "5484248423",
+            city: "Cidade teste",
+            state: "Estado teste",
+            country: "País teste",
+            fantasy_name: "Empresa teste",
+            document: "comercio3",
+            classification: "Classificação",
+            colaborators_number: 5,
+            email: "comercio3@comercio.com",
+            phone_1: "215745158",
+            phone_2: "124588965",
+            business_type: "comercio",
+            branches_uuid: [branch1_uuid, branch3_uuid, branch4_uuid],
+            partnerConfig: {
+              main_branch: branch4_uuid,
+              partner_category: ['saude'],
+              use_marketing: true,
+              use_market_place: true
+            }
+          }
+
+          const result = await request(app).post("/business/register").send(input)
+          expect(result.statusCode).toBe(201)
+          //Address
+          expect(result.body.Address.uuid).toBeTruthy()
+          expect(result.body.Address.line1).toEqual(input.line1)
+          expect(result.body.Address.line2).toEqual(input.line2)
+          expect(result.body.Address.line3).toEqual(input.line3)
+          expect(result.body.Address.neighborhood).toEqual(input.neighborhood)
+          expect(result.body.Address.postal_code).toEqual(input.postal_code)
+          expect(result.body.Address.city).toEqual(input.city)
+          expect(result.body.Address.state).toEqual(input.state)
+          expect(result.body.Address.country).toEqual(input.country)
+          //Business Info
+          expect(result.body.BusinessInfo.uuid).toBeTruthy()
+          expect(result.body.BusinessInfo.address_uuid).toEqual(result.body.Address.uuid)
+          expect(result.body.BusinessInfo.fantasy_name).toEqual(input.fantasy_name)
+          expect(result.body.BusinessInfo.corporate_reason).toBeFalsy()
+          expect(result.body.BusinessInfo.document).toEqual(input.document)
+          expect(result.body.BusinessInfo.classification).toEqual(input.classification)
+          expect(result.body.BusinessInfo.colaborators_number).toEqual(input.colaborators_number)
+          expect(result.body.BusinessInfo.status).toBe('pending_approval')
+          expect(result.body.BusinessInfo.phone_1).toEqual(input.phone_1)
+          expect(result.body.BusinessInfo.phone_2).toEqual(input.phone_2)
+          expect(result.body.BusinessInfo.document).toEqual(input.document)
+          expect(result.body.BusinessInfo.business_type).toEqual(input.business_type)
+          expect(result.body.BusinessInfo.email).toEqual(input.email)
+          expect(result.body.BusinessInfo.created_at).toBeTruthy()
+          //N to N business / correct
+          expect(result.body.CorrectUserBusinessBranch.uuid).toBeTruthy()
+          expect(result.body.CorrectUserBusinessBranch.business_info_uuid).toEqual(result.body.BusinessInfo.uuid)
+          expect(result.body.CorrectUserBusinessBranch.correct_user_uuid).toBeFalsy()
+          expect(result.body.CorrectUserBusinessBranch.created_at).toBeTruthy()
+          //PartnerConfig
+          expect(result.body.PartnerConfig.uuid).toBeTruthy()
+          expect(result.body.PartnerConfig.business_info_uuid).toEqual(result.body.BusinessInfo.uuid)
+          expect(result.body.PartnerConfig.main_branch).toEqual(input.partnerConfig.main_branch)
+          expect(result.body.PartnerConfig.partner_category).toEqual(input.partnerConfig.partner_category)
+          expect(result.body.PartnerConfig.main_branch).toEqual(input.partnerConfig.main_branch)
+          expect(result.body.PartnerConfig.items_uuid.length).not.toBe(0)
+          expect(result.body.PartnerConfig.admin_tax).toEqual(170) //this is according to branch1 definitions
+          expect(result.body.PartnerConfig.marketing_tax).toEqual(180)
+          expect(result.body.PartnerConfig.use_marketing).toBeTruthy()
+          expect(result.body.PartnerConfig.market_place_tax).toEqual(160)
+          expect(result.body.PartnerConfig.use_market_place).toBeTruthy()
+        })
+
       })
 
       describe("E2E Employer Registers test", () => {
@@ -728,7 +896,8 @@ describe("E2E Business tests", () => {
           const result = await request(app).post("/business/register").send(input)
           expect(result.statusCode).toBe(201)
 
-          employer_info_uuid = result.body.business_info_uuid
+          employer_info_uuid = result.body.BusinessInfo.uuid
+          employer_address_uuid = result.body.Address.uuid
 
         })
       })
@@ -780,7 +949,7 @@ describe("E2E Business tests", () => {
 
       it("Should update business data by correct admin", async () => {
         const input = {
-          address_uuid: business_address_uuid,
+          address_uuid: partner_address_uuid,
           fantasy_name: "Empresa novo nome",
           document: "comercio",
           classification: "Classificação",
@@ -796,7 +965,7 @@ describe("E2E Business tests", () => {
         }
         const result = await request(app).put("/business/info/correct").set('Authorization', `Bearer ${correctAdminToken}`).query(query).send(input)
         expect(result.statusCode).toBe(200)
-        expect(result.body.address_uuid).toEqual(business_address_uuid)
+        expect(result.body.address_uuid).toEqual(partner_address_uuid)
         expect(result.body.fantasy_name).toBe(input.fantasy_name)
         expect(result.body.status).toBe("pending_approval")
         expect(result.body.document).toBe(input.document)
@@ -901,7 +1070,7 @@ describe("E2E Business tests", () => {
       it("Should throw an error if business is inactive", async () => {
         //inactive business
         const inputToInactivate = {
-          address_uuid: business_address_uuid,
+          address_uuid: partner_address_uuid,
           fantasy_name: "Empresa novo nome",
           document: "comercio",
           classification: "Classificação",
@@ -933,7 +1102,7 @@ describe("E2E Business tests", () => {
       it("Should create business admin", async () => {
         //activate business
         const inputToActivate = {
-          address_uuid: business_address_uuid,
+          address_uuid: partner_address_uuid,
           fantasy_name: "Empresa novo nome",
           document: "comercio",
           classification: "Classificação",
@@ -1152,7 +1321,6 @@ describe("E2E Business tests", () => {
 
 
         const result = await request(app).put("/company-admin").set('Authorization', `Bearer ${partner_admin_token}`).send(input)
-
         //test if password has not changed
         const inputAuthenticate = {
           business_document: "comercio",
@@ -1576,7 +1744,7 @@ describe("E2E Business tests", () => {
 
         }
         const query = {
-          address_uuid: business_address_uuid
+          address_uuid: partner_address_uuid
         }
         const result = await request(app).put("/company-address").set('Authorization', `Bearer ${partner_admin_token}`).query(query).send(input)
         const data = await request(app).get("/business/info").set('Authorization', `Bearer ${partner_admin_token}`)
@@ -1858,7 +2026,7 @@ describe("E2E Business tests", () => {
     beforeAll(async () => {
       //activate business
       const inputToActivate = {
-        address_uuid: business_address_uuid,
+        address_uuid: employer_address_uuid,
         fantasy_name: "Empresa novo nome",
         document: "empregador",
         classification: "Classificação",
@@ -1931,6 +2099,101 @@ describe("E2E Business tests", () => {
         expect(result.statusCode).toBe(200)
       })
 
+    })
+  })
+
+  describe("Partner First register by correct seller", () => {
+    describe("E2E Registering partner by correft seller", () => {
+      it("Should register partner by correct seller", async () => {
+        const input = {
+          line1: "Rua",
+          line2: "72B",
+          line3: "",
+          neighborhood: "Bairro Teste",
+          postal_code: "5484248423",
+          city: "Cidade teste",
+          state: "Estado teste",
+          country: "País teste",
+          fantasy_name: "Empresa teste",
+          document: "comercio4",
+          classification: "Classificação",
+          colaborators_number: 5,
+          email: "comercio4@comercio.com",
+          phone_1: "215745158",
+          phone_2: "124588965",
+          business_type: "comercio",
+          branches_uuid: [branch1_uuid, branch3_uuid, branch4_uuid],
+          partnerConfig: {
+            main_branch: branch1_uuid,
+            partner_category: ['saude'],
+            use_marketing: false,
+            use_market_place: false
+          }
+        }
+
+        const result = await request(app).post("/business/register/correct").set('Authorization', `Bearer ${correctSellerToken}`).send(input)
+        expect(result.statusCode).toBe(201)
+        expect(result.body.CorrectUserBusinessBranch.correct_user_uuid).toBeTruthy()
+      })
+    })
+    describe("E2E Get Registered partner by correct seller", () => {
+      it("Should throw an error if business document is missing", async () => {
+        const result = await request(app).get("/partner/seller").set('Authorization', `Bearer ${correctSellerToken}`).send()
+
+        expect(result.statusCode).toBe(400)
+        expect(result.body.error).toBe("Business Document is required")
+      })
+
+      it("Should throw an error if business is not found", async () => {
+        const result = await request(app).get("/partner/seller").set('Authorization', `Bearer ${correctSellerToken}`).send({document: '123'})
+
+        expect(result.statusCode).toBe(404)
+        expect(result.body.error).toBe("Business not found")
+      })
+
+      it("Should throw an error if correct seller did not register this partner", async () => {
+        const result = await request(app).get("/partner/seller").set('Authorization', `Bearer ${correctSellerToken}`).send({document: 'CNPJ'})
+
+        expect(result.statusCode).toBe(401)
+        expect(result.body.error).toBe("Unauthorized access")
+      })
+      it("Should return partner", async () => {
+        const result = await request(app).get("/partner/seller").set('Authorization', `Bearer ${correctSellerToken}`).send({document: 'comercio4'})
+
+        expect(result.statusCode).toBe(200)
+        expect(result.body.business_document).toBe("comercio4")
+        expect(result.body.fantasy_name).toBe("Empresa teste")
+
+      })
+
+    })
+
+  })
+
+  describe("E2E Partner Config", () => {
+    describe("Set partner config definitions by partner", () => {
+      it("Should throw an error if any data is sent on the request", async () => {
+
+        const result = await request(app).put(`/partner/config`).set('Authorization', `Bearer ${partner_admin_token}`)
+        expect(result.statusCode).toBe(400)
+        expect(result.body.error).toBe("At least one field is required")
+      })
+
+      it("Should set definitions", async () => {
+        const input = {
+          title: "Comércio muito bom",
+          phone: "67896487542",
+          description: "Descrição do comércio que é muito bom mesmo",
+          sales_type: "presencial"
+
+        }
+        const result = await request(app).put(`/partner/config`).set('Authorization', `Bearer ${partner_admin_token}`).send(input)
+        expect(result.statusCode).toBe(201)
+        expect(result.body.title).toEqual(input.title)
+        expect(result.body.phone).toEqual(input.phone)
+        expect(result.body.description).toEqual(input.description)
+        expect(result.body.sales_type).toEqual(input.sales_type)
+      })
     })
   })
 

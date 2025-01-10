@@ -13,12 +13,24 @@ let userToken2: string;
 let userToken3: string
 
 let correctAdminToken: string
-let partner_info_uuid: string
+
 let business_address_uuid: string
 
 let employer_info_uuid: string
 let employer_info_uuid2: string
 let employer_info_uuid3: string
+
+
+let partner_info_uuid: string
+let partner_info_uuid2: string
+let partner_info_uuid3: string
+let partner_info_uuid4: string
+let partner_info_uuid5: string
+let partner_info_uuid6: string
+let partner_info_uuid7: string
+let partner_info_uuid8: string
+let partner_info_uuid9: string
+let partner_info_uuid10: string
 
 let employee_user_document: string
 
@@ -120,6 +132,14 @@ describe("E2E App User tests", () => {
     const result = await request(app).post('/login').send(authenticateAdmin)
     correctAdminToken = result.body.token
 
+    const benefit0 = {
+      name: "Correct",
+      description: "Descrição do vale",
+      parent_uuid: null as any,
+      item_type: 'gratuito',
+      item_category: 'pre_pago',
+    }
+
     //create items
     const benefit1: InputCreateBenefitDto = {
       name: "Vale Alimentação",
@@ -152,7 +172,7 @@ describe("E2E App User tests", () => {
       item_category: 'pre_pago',
     }
 
-
+    const benefit0Response = await request(app).post('/benefit').set('Authorization', `Bearer ${correctAdminToken}`).send(benefit0);
     const benefit1Response = await request(app).post('/benefit').set('Authorization', `Bearer ${correctAdminToken}`).send(benefit1);
     const benefit2Response = await request(app).post('/benefit').set('Authorization', `Bearer ${correctAdminToken}`).send(benefit2);
     const benefit3Response = await request(app).post('/benefit').set('Authorization', `Bearer ${correctAdminToken}`).send(benefit3);
@@ -171,7 +191,7 @@ describe("E2E App User tests", () => {
         marketing_tax: 100,
         admin_tax: 150,
         market_place_tax: 120,
-        benefits_name: ['Adiantamento Salarial', 'Vale Alimentação']
+        benefits_name: ['Adiantamento Salarial', 'Vale Alimentação','Correct']
       },
 
       {
@@ -179,7 +199,7 @@ describe("E2E App User tests", () => {
         marketing_tax: 100,
         admin_tax: 150,
         market_place_tax: 120,
-        benefits_name: ['Adiantamento Salarial', 'Vale Refeição']
+        benefits_name: ['Adiantamento Salarial', 'Vale Refeição', 'Correct']
       },
 
       {
@@ -187,14 +207,14 @@ describe("E2E App User tests", () => {
         marketing_tax: 130,
         admin_tax: 140,
         market_place_tax: 130,
-        benefits_name: ['Convênio', 'Vale Alimentação']
+        benefits_name: ['Convênio', 'Vale Alimentação', 'Correct']
       },
       {
         name: "Restaurantes",
         marketing_tax: 180,
         admin_tax: 170,
         market_place_tax: 160,
-        benefits_name: ['Vale Refeição', 'Vale Alimentação']
+        benefits_name: ['Vale Refeição', 'Vale Alimentação', 'Correct']
       },
 
       {
@@ -202,7 +222,7 @@ describe("E2E App User tests", () => {
         marketing_tax: 200,
         admin_tax: 250,
         market_place_tax: 220,
-        benefits_name: ['Vale Refeição', 'Vale Alimentação']
+        benefits_name: ['Vale Refeição', 'Vale Alimentação', 'Correct']
       }
     ]
 
@@ -240,7 +260,7 @@ describe("E2E App User tests", () => {
     }
 
     const businessInfo = await request(app).post("/business/register").send(input)
-    employer_info_uuid = businessInfo.body.business_info_uuid
+    employer_info_uuid = businessInfo.body.BusinessInfo.uuid
 
     //create business info 2
     const input2 = {
@@ -266,7 +286,7 @@ describe("E2E App User tests", () => {
 
     const businessInfo2 = await request(app).post("/business/register").send(input2)
 
-    employer_info_uuid2 = businessInfo2.body.business_info_uuid
+    employer_info_uuid2 = businessInfo2.body.BusinessInfo.uuid
 
     //create business info 3
     const input3 = {
@@ -292,7 +312,7 @@ describe("E2E App User tests", () => {
 
     const businessInfo3 = await request(app).post("/business/register").send(input3)
 
-    employer_info_uuid3 = businessInfo3.body.business_info_uuid
+    employer_info_uuid3 = businessInfo3.body.BusinessInfo.uuid
 
 
 
@@ -1540,7 +1560,6 @@ describe("E2E App User tests", () => {
           .query(query)
           .set('Authorization', `Bearer ${correctAdminToken}`)
 
-
         expect(result.statusCode).toBe(400);
         expect(result.body.error).toBe('Error upload file');
 
@@ -2686,7 +2705,7 @@ describe("E2E App User tests", () => {
       it("Should create an group", async () => {
         const input: any = {
           group_name: "Grupo 1",
-          employer_item_details_uuid:employerItems1[0],
+          employer_item_details_uuid: employerItems1[0],
           value: 50000,
         }
         const result = await request(app).post("/business-admin/group").set('Authorization', `Bearer ${employer_user_token}`).send(input)
@@ -2703,7 +2722,7 @@ describe("E2E App User tests", () => {
       it("Should throw an error if group id is missing", async () => {
         const input: any = {
           group_name: "Grupo 1 Editado",
-          employer_item_details_uuid:employerItems1[0],
+          employer_item_details_uuid: employerItems1[0],
           value: 58400,
         }
         const result = await request(app).put("/business-admin/group").set('Authorization', `Bearer ${employer_user_token}`).send(input)
@@ -2715,7 +2734,7 @@ describe("E2E App User tests", () => {
         const input: any = {
           uuid: group1_uuid,
           group_name: "Grupo 1 Editado",
-          employer_item_details_uuid:employerItems1[0],
+          employer_item_details_uuid: employerItems1[0],
           value: 58400,
         }
         const result = await request(app).put("/business-admin/group").set('Authorization', `Bearer ${employer_user_token}`).send(input)
@@ -2733,7 +2752,7 @@ describe("E2E App User tests", () => {
         //create one more group by employer 1
         const input: any = {
           group_name: "Grupo 1",
-          employer_item_details_uuid:employerItems1[1],
+          employer_item_details_uuid: employerItems1[1],
           value: 35000,
         }
         const result = await request(app).post("/business-admin/group").set('Authorization', `Bearer ${employer_user_token}`).send(input)
@@ -2787,6 +2806,384 @@ describe("E2E App User tests", () => {
       })
     })
 
+  })
+
+  describe("E2E App User and Partners", () => {
+    //first we need to create partners, lets create 10
+    beforeAll(async () => {
+      //partner 1
+      const input = {
+        line1: "Rua",
+        line2: "72B",
+        line3: "",
+        neighborhood: "Bairro Teste",
+        postal_code: "5484248423",
+        city: "Campo Grande",
+        state: "Estado teste",
+        country: "País teste",
+        fantasy_name: "Mercado Empresa teste 1",
+        document: "comercio",
+        classification: "Classificação",
+        colaborators_number: 5,
+        email: "comercio@comercio.com",
+        phone_1: "215745158",
+        phone_2: "124588965",
+        business_type: "comercio",
+        branches_uuid: [branch1_uuid, branch3_uuid, branch4_uuid],
+        partnerConfig: {
+          main_branch: branch4_uuid,
+          partner_category: ['saude'],
+          use_marketing: false,
+          use_market_place: false
+        }
+      }
+
+      const partner1 = await request(app).post("/business/register").send(input)
+      expect(partner1.statusCode).toBe(201)
+      partner_info_uuid = partner1.body.BusinessInfo.uuid
+
+      //partner 2
+      const input2 = {
+        line1: "Rua",
+        line2: "72B",
+        line3: "",
+        neighborhood: "Bairro Teste",
+        postal_code: "5484248423",
+        city: "Campo Grande",
+        state: "Estado teste",
+        country: "País teste",
+        fantasy_name: "Mercado Empresa teste 2",
+        document: "comercio2",
+        classification: "Classificação",
+        colaborators_number: 5,
+        email: "comercio2@comercio.com",
+        phone_1: "215745158",
+        phone_2: "124588965",
+        business_type: "comercio",
+        branches_uuid: [branch1_uuid, branch3_uuid, branch4_uuid],
+        partnerConfig: {
+          main_branch: branch1_uuid,
+          partner_category: ['saude'],
+          use_marketing: false,
+          use_market_place: false
+        }
+      }
+
+      const partner2 = await request(app).post("/business/register").send(input2)
+      expect(partner2.statusCode).toBe(201)
+      partner_info_uuid2 = partner2.body.BusinessInfo.uuid
+
+      //partner 3
+      const input3 = {
+        line1: "Rua",
+        line2: "72B",
+        line3: "",
+        neighborhood: "Bairro Teste",
+        postal_code: "5484248423",
+        city: "Campo Grande",
+        state: "Estado teste",
+        country: "País teste",
+        fantasy_name: "Empresa teste 3",
+        document: "comercio3",
+        classification: "Classificação",
+        colaborators_number: 5,
+        email: "comercio3@comercio.com",
+        phone_1: "215745158",
+        phone_2: "124588965",
+        business_type: "comercio",
+        branches_uuid: [branch1_uuid, branch3_uuid, branch4_uuid],
+        partnerConfig: {
+          main_branch: branch3_uuid,
+          partner_category: ['comercio'],
+          use_marketing: true,
+          use_market_place: true
+        }
+      }
+
+      const partner3 = await request(app).post("/business/register").send(input3)
+      expect(partner3.statusCode).toBe(201)
+      partner_info_uuid3 = partner3.body.BusinessInfo.uuid
+
+      //partner 4
+      const input4 = {
+        line1: "Rua",
+        line2: "72B",
+        line3: "",
+        neighborhood: "Bairro Teste",
+        postal_code: "5484248423",
+        city: "Corumbá",
+        state: "Estado teste",
+        country: "País teste",
+        fantasy_name: "Empresa teste 4",
+        document: "comercio4",
+        classification: "Classificação",
+        colaborators_number: 5,
+        email: "comercio4@comercio.com",
+        phone_1: "215745158",
+        phone_2: "124588965",
+        business_type: "comercio",
+        branches_uuid: [branch1_uuid, branch3_uuid, branch4_uuid],
+        partnerConfig: {
+          main_branch: branch4_uuid,
+          partner_category: ['comercio'],
+          use_marketing: true,
+          use_market_place: true
+        }
+      }
+
+      const partner4 = await request(app).post("/business/register").send(input4)
+      expect(partner4.statusCode).toBe(201)
+      partner_info_uuid4 = partner4.body.BusinessInfo.uuid
+
+      //partner 5
+      const input5 = {
+        line1: "Rua",
+        line2: "72B",
+        line3: "",
+        neighborhood: "Bairro Teste",
+        postal_code: "5484248423",
+        city: "Corumbá",
+        state: "Estado teste",
+        country: "País teste",
+        fantasy_name: "Empresa teste 5",
+        document: "comercio5",
+        classification: "Classificação",
+        colaborators_number: 5,
+        email: "comercio5@comercio.com",
+        phone_1: "215745158",
+        phone_2: "124588965",
+        business_type: "comercio",
+        branches_uuid: [branch1_uuid, branch3_uuid, branch4_uuid],
+        partnerConfig: {
+          main_branch: branch1_uuid,
+          partner_category: ['comercio', 'saude'],
+          use_marketing: true,
+          use_market_place: true
+        }
+      }
+
+      const partner5 = await request(app).post("/business/register").send(input5)
+      expect(partner5.statusCode).toBe(201)
+      partner_info_uuid5 = partner5.body.BusinessInfo.uuid
+
+      //partner 6
+      const input6 = {
+        line1: "Rua",
+        line2: "72B",
+        line3: "",
+        neighborhood: "Bairro Teste",
+        postal_code: "5484248423",
+        city: "Corumbá",
+        state: "Estado teste",
+        country: "País teste",
+        fantasy_name: "Empresa teste 6",
+        document: "comercio6",
+        classification: "Classificação",
+        colaborators_number: 5,
+        email: "comercio6@comercio.com",
+        phone_1: "215745158",
+        phone_2: "124588965",
+        business_type: "comercio",
+        branches_uuid: [branch1_uuid, branch3_uuid, branch4_uuid],
+        partnerConfig: {
+          main_branch: branch3_uuid,
+          partner_category: ['comercio'],
+          use_marketing: true,
+          use_market_place: true
+        }
+      }
+
+      const partner6 = await request(app).post("/business/register").send(input6)
+      expect(partner6.statusCode).toBe(201)
+      partner_info_uuid6 = partner6.body.BusinessInfo.uuid
+
+      //partner 7
+      const input7 = {
+        line1: "Rua",
+        line2: "72B",
+        line3: "",
+        neighborhood: "Bairro Teste",
+        postal_code: "5484248423",
+        city: "Ladário",
+        state: "Estado teste",
+        country: "País teste",
+        fantasy_name: "Empresa teste 7",
+        document: "comercio7",
+        classification: "Classificação",
+        colaborators_number: 5,
+        email: "comercio7@comercio.com",
+        phone_1: "215745158",
+        phone_2: "124588965",
+        business_type: "comercio",
+        branches_uuid: [branch1_uuid, branch3_uuid, branch4_uuid],
+        partnerConfig: {
+          main_branch: branch4_uuid,
+          partner_category: ['cultura', 'comercio'],
+          use_marketing: true,
+          use_market_place: true
+        }
+      }
+
+      const partner7 = await request(app).post("/business/register").send(input7)
+      expect(partner7.statusCode).toBe(201)
+      partner_info_uuid7 = partner7.body.BusinessInfo.uuid
+
+      //partner 8
+      const input8 = {
+        line1: "Rua",
+        line2: "72B",
+        line3: "",
+        neighborhood: "Bairro Teste",
+        postal_code: "5484248423",
+        city: "Ladário",
+        state: "Estado teste",
+        country: "País teste",
+        fantasy_name: "Empresa teste 8",
+        document: "comercio8",
+        classification: "Classificação",
+        colaborators_number: 5,
+        email: "comercio8@comercio.com",
+        phone_1: "215745158",
+        phone_2: "124588965",
+        business_type: "comercio",
+        branches_uuid: [branch1_uuid, branch3_uuid, branch4_uuid],
+        partnerConfig: {
+          main_branch: branch1_uuid,
+          partner_category: ['cultura'],
+          use_marketing: true,
+          use_market_place: true
+        }
+      }
+
+      const partner8 = await request(app).post("/business/register").send(input8)
+      expect(partner8.statusCode).toBe(201)
+      partner_info_uuid8 = partner8.body.BusinessInfo.uuid
+
+      //partner 9
+      const input9 = {
+        line1: "Rua",
+        line2: "72B",
+        line3: "",
+        neighborhood: "Bairro Teste",
+        postal_code: "5484248423",
+        city: "Ladário",
+        state: "Estado teste",
+        country: "País teste",
+        fantasy_name: "Empresa teste 9",
+        document: "comercio9",
+        classification: "Classificação",
+        colaborators_number: 5,
+        email: "comercio9@comercio.com",
+        phone_1: "215745158",
+        phone_2: "124588965",
+        business_type: "comercio",
+        branches_uuid: [branch1_uuid, branch3_uuid, branch4_uuid],
+        partnerConfig: {
+          main_branch: branch3_uuid,
+          partner_category: ['cultura', 'saude'],
+          use_marketing: false,
+          use_market_place: false
+        }
+      }
+
+      const partner9 = await request(app).post("/business/register").send(input9)
+      expect(partner9.statusCode).toBe(201)
+      partner_info_uuid9 = partner9.body.BusinessInfo.uuid
+
+      //partner 10
+      const input10 = {
+        line1: "Rua",
+        line2: "72B",
+        line3: "",
+        neighborhood: "Bairro Teste",
+        postal_code: "5484248423",
+        city: "Aquidauana",
+        state: "Estado teste",
+        country: "País teste",
+        fantasy_name: "Empresa teste 10",
+        document: "comercio10",
+        classification: "Classificação",
+        colaborators_number: 5,
+        email: "comercio10@comercio.com",
+        phone_1: "215745158",
+        phone_2: "124588965",
+        business_type: "comercio",
+        branches_uuid: [branch1_uuid, branch3_uuid, branch4_uuid],
+        partnerConfig: {
+          main_branch: branch4_uuid,
+          partner_category: ['cultura', 'comercio'],
+          use_marketing: true,
+          use_market_place: true
+        }
+      }
+
+      const partner10 = await request(app).post("/business/register").send(input10)
+      expect(partner10.statusCode).toBe(201)
+      partner_info_uuid10 = partner10.body.BusinessInfo.uuid
+
+    })
+    describe("Get partners by category by app user", () => {
+      it("Should throw an error if partner category is missing", async () => {
+        const result = await request(app).get("/partners/category").set('Authorization', `Bearer ${userToken1}`)
+        expect(result.statusCode).toBe(400)
+        expect(result.body.error).toBe("Category is required")
+
+      })
+      // it("Should return a list of partners", async () => {
+      //   const result = await request(app).get("/partners/category").set('Authorization', `Bearer ${userToken1}`).query({partner_category: 'saude'})
+      //   console.log("result: ", result.body)
+      //   expect(result.statusCode).toBe(200)
+      //   expect(result.body.length).toBe(4)
+      // })
+      it("Should return only cities located in Campo Grande with Saude category", async () => {
+        //In this test, we have 2 filters: partner_category and city
+        //So we want all partners that are located in campo grande and have the "saude" category
+        const input = {
+          city: "Campo Grande"
+        }
+        const result = await request(app).get("/partners/filter").set('Authorization', `Bearer ${userToken1}`).query({partner_category: 'saude'}).send(input)
+        expect(result.statusCode).toBe(200)
+        expect(result.body.length).toBe(2)
+      })
+      it("Should return only partners located in Corumba with Comercio category", async () => {
+        //In this test, we have 2 filters: partner_category and city
+        //So we want all partners that are located in campo grande and have the "saude" category
+        const input = {
+          city: "Corumbá"
+        }
+        const result = await request(app).get("/partners/filter").set('Authorization', `Bearer ${userToken1}`).query({partner_category: 'comercio'}).send(input)
+        expect(result.statusCode).toBe(200)
+        expect(result.body.length).toBe(3)
+      })
+      it("Should return only partners located in Corumba which main branch is branch4", async () => {
+        const input = {
+          city: "Corumbá",
+          main_branch: branch4_uuid
+        }
+        const result = await request(app).get("/partners/filter").set('Authorization', `Bearer ${userToken1}`).query({partner_category: 'comercio'}).send(input)
+        expect(result.statusCode).toBe(200)
+        expect(result.body.length).toBe(3)
+      })
+      it("Should return only partners located in Campo Grande with specific search query", async () => {
+        const input = {
+          city: "Campo Grande",
+          search: "Mercado"
+        }
+        const result = await request(app).get("/partners/filter").set('Authorization', `Bearer ${userToken1}`).query({partner_category: 'saude'}).send(input)
+
+        expect(result.statusCode).toBe(200)
+        expect(result.body.length).toBe(2)
+      })
+      it("Should return only partners located in Campo Grande that accept an specefic type of benefit", async () => {
+        const input = {
+          city: "Campo Grande",
+          item_uuid: benefit1_uuid.uuid
+        }
+        const result = await request(app).get("/partners/filter").set('Authorization', `Bearer ${userToken1}`).query({partner_category: 'saude'}).send(input)
+        expect(result.statusCode).toBe(200)
+
+      })
+    })
 
   })
 
